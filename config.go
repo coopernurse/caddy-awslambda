@@ -1,6 +1,8 @@
 package awslambda
 
 import (
+	"encoding/json"
+	"net/http"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -31,6 +33,10 @@ type Config struct {
 	// Functions matching *any* of these rules will be excluded, and not proxied.
 	// If Exclude is empty, no exclude rules will be applied.
 	Exclude []string
+	// Optional strings to prepend or append to the parsed function name from the URL
+	// before invoking the lambda. These are applied after the Include/Exclude rules are run
+	NamePrepend string
+	NameAppend  string
 
 	invoker Invoker
 }
@@ -86,6 +92,45 @@ func (c *Config) ToAwsConfig() *aws.Config {
 	return awsConf
 }
 
+// MaybeToInvokeInput returns a new InvokeInput instanced based on the  HTTP request.
+// If the function name parsed from the r.URL.Path doesn't comply with the Config's
+// include/exclude rules, then nil, nil is returned.
+// Otherwise an InvokeInput is returned with all fields populated based on the
+// http.Request, and the NameAppend and NamePrepend rules applied (if any).
+func (c *Config) MaybeToInvokeInput(r *http.Request) (*lambda.InvokeInput, error) {
+	// Verify that parsed function name is allowed based on Config rules
+	funcName := ParseFunction(r.URL.Path)
+	if !c.AcceptsFunction(funcName) {
+		return nil, nil
+	}
+
+	req, err := NewRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.NamePrepend != "" {
+		funcName = c.NamePrepend + funcName
+	}
+	if c.NameAppend != "" {
+		funcName = funcName + c.NameAppend
+	}
+
+	input := &lambda.InvokeInput{
+		FunctionName: &funcName,
+		Payload:      payload,
+	}
+	if c.Qualifier != "" {
+		input.Qualifier = &c.Qualifier
+	}
+	return input, nil
+}
+
 func (c *Config) initLambdaClient() error {
 	sess, err := session.NewSession(c.ToAwsConfig())
 	if err != nil {
@@ -121,6 +166,10 @@ func ParseConfigs(c *caddy.Controller) ([]*Config, error) {
 			conf.AwsRegion = val
 		case "qualifier":
 			conf.Qualifier = val
+		case "name_prepend":
+			conf.NamePrepend = val
+		case "name_append":
+			conf.NameAppend = val
 		case "include":
 			conf.Include = append(conf.Include, val)
 			conf.Include = append(conf.Include, c.RemainingArgs()...)

@@ -1,11 +1,15 @@
 package awslambda
 
 import (
+	"bytes"
+	"io"
+	"net/http"
 	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/mholt/caddy"
 )
 
@@ -112,16 +116,20 @@ func TestParseConfigs(t *testing.T) {
     qualifier  prod
     include    foo*  some-other
     exclude    *blah*
+    name_prepend   apex-foo_
+    name_append    _suffix_here
 }`,
 			[]*Config{
 				&Config{
-					Path:      "/blah/",
-					AwsAccess: "my-access",
-					AwsSecret: "my-secret",
-					AwsRegion: "us-west-1",
-					Qualifier: "prod",
-					Include:   []string{"foo*", "some-other"},
-					Exclude:   []string{"*blah*"},
+					Path:        "/blah/",
+					AwsAccess:   "my-access",
+					AwsSecret:   "my-secret",
+					AwsRegion:   "us-west-1",
+					Qualifier:   "prod",
+					Include:     []string{"foo*", "some-other"},
+					Exclude:     []string{"*blah*"},
+					NamePrepend: "apex-foo_",
+					NameAppend:  "_suffix_here",
 				},
 			},
 		},
@@ -161,4 +169,49 @@ awslambda /second/path/ {
 		}
 		eqOrErr(test.expected, actual, i, t)
 	}
+}
+
+func TestMaybeToInvokeInput(t *testing.T) {
+	r1 := mustNewRequest("PUT", "/api/user", bytes.NewBufferString("hello world"))
+	r2 := mustNewRequest("PUT", "/api/user", bytes.NewBufferString("hello world"))
+
+	// expect a non-nil input
+	c := Config{
+		NamePrepend: "before-",
+		NameAppend:  "-after",
+		Qualifier:   "prod",
+	}
+	input, err := c.MaybeToInvokeInput(r1)
+	if err != nil {
+		t.Fatalf("MaybeToInvokeInput returned err: %v", err)
+	}
+	if input == nil {
+		t.Fatalf("MaybeToInvokeInput returned nil input")
+	}
+	funcName := "before-user-after"
+	req, err := NewRequest(r2)
+	if err != nil {
+		t.Fatalf("NewRequest returned err: %v", err)
+	}
+	expected := lambda.InvokeInput{
+		FunctionName: &funcName,
+		Qualifier:    &c.Qualifier,
+		Payload:      marshalJSON(req),
+	}
+	eqOrErr(expected, *input, 0, t)
+
+	// expect a nil input since include rule doesn't match
+	c.Include = []string{"*blah*"}
+	input, err = c.MaybeToInvokeInput(r1)
+	if err != nil || input != nil {
+		t.Fatalf("MaybeToInvokeInput returned err or non-nil input: input=%v  err=%v", input, err)
+	}
+}
+
+func mustNewRequest(method, path string, body io.Reader) *http.Request {
+	req, err := http.NewRequest(method, path, body)
+	if err != nil {
+		panic(err)
+	}
+	return req
 }

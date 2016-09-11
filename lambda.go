@@ -1,7 +1,6 @@
 package awslambda
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -72,29 +71,6 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) 
 	return reply.Meta.Status, nil
 }
 
-// toInvokeInput returns a new InvokeInput instanced based on the  HTTP request.
-func (h Handler) toInvokeInput(r *http.Request, qualifier string) (*lambda.InvokeInput, error) {
-	req, err := NewRequest(r)
-	if err != nil {
-		return nil, err
-	}
-
-	funcName := ParseFunction(r.URL.Path)
-	payload, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	input := &lambda.InvokeInput{
-		FunctionName: &funcName,
-		Payload:      payload,
-	}
-	if qualifier != "" {
-		input.Qualifier = &qualifier
-	}
-	return input, nil
-}
-
 // match finds the best match for a proxy config based on r.
 func (h Handler) match(r *http.Request) (*Config, *lambda.InvokeInput, error) {
 	var c *Config
@@ -105,13 +81,10 @@ func (h Handler) match(r *http.Request) (*Config, *lambda.InvokeInput, error) {
 		basePath := conf.Path
 		if httpserver.Path(r.URL.Path).Matches(basePath) && len(basePath) > longestMatch {
 			// Convert the request to Invoke input struct
-			invokeInput, err = h.toInvokeInput(r, conf.Qualifier)
+			invokeInput, err = conf.MaybeToInvokeInput(r)
 			if err != nil {
 				return c, nil, err
-			}
-
-			// Verify that parsed function name is allowed based on Config rules
-			if conf.AcceptsFunction(*invokeInput.FunctionName) {
+			} else if invokeInput != nil {
 				longestMatch = len(basePath)
 				c = conf
 			}
