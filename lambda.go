@@ -2,7 +2,6 @@ package awslambda
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
@@ -91,25 +90,4 @@ func (h Handler) match(r *http.Request) (*Config, *lambda.InvokeInput, error) {
 		}
 	}
 	return c, invokeInput, nil
-}
-
-// ParseFunction returns the fragment of path that occurs after
-// the last '/' character, excluding query string and named anchors.
-//
-// For example, given a path of '/lambda/my-func?a=/foo', ParseFunction returns 'my-func'
-func ParseFunction(path string) string {
-	pos := strings.Index(path, "?")
-	if pos > -1 {
-		path = path[:pos]
-	}
-	pos = strings.Index(path, "#")
-	if pos > -1 {
-		path = path[:pos]
-	}
-
-	pos = strings.LastIndex(path, "/")
-	if pos == -1 {
-		return path
-	}
-	return path[pos+1:]
 }
