@@ -92,6 +92,25 @@ func (c *Config) ToAwsConfig() *aws.Config {
 	return awsConf
 }
 
+// ParseFunction returns the fragment of path immediately after the
+// config path, excluding string and named anchors.
+//
+// For example, given a path of '/lambda/my-func/pathparam?a=/foo',
+// ParseFunction returns 'my-func'
+func (c *Config) ParseFunction(path string) string {
+	path = strings.TrimPrefix(path, c.Path)
+	pos := strings.Index(path, "?")
+	if pos > -1 {
+		path = path[:pos]
+	}
+	pos = strings.Index(path, "#")
+	if pos > -1 {
+		path = path[:pos]
+	}
+
+	return strings.Split(path, "/")[0]
+}
+
 // MaybeToInvokeInput returns a new InvokeInput instanced based on the  HTTP request.
 // If the function name parsed from the r.URL.Path doesn't comply with the Config's
 // include/exclude rules, then nil, nil is returned.
@@ -99,7 +118,7 @@ func (c *Config) ToAwsConfig() *aws.Config {
 // http.Request, and the NameAppend and NamePrepend rules applied (if any).
 func (c *Config) MaybeToInvokeInput(r *http.Request) (*lambda.InvokeInput, error) {
 	// Verify that parsed function name is allowed based on Config rules
-	funcName := ParseFunction(r.URL.Path)
+	funcName := c.ParseFunction(r.URL.Path)
 	if !c.AcceptsFunction(funcName) {
 		return nil, nil
 	}

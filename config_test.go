@@ -171,12 +171,35 @@ awslambda /second/path/ {
 	}
 }
 
+func TestParseFunction(t *testing.T) {
+	for i, test := range []struct {
+		path     string
+		expected string
+	}{
+		{"/foo/bar", "bar"},
+		{"/foo/bar/baz", "bar"},
+		{"/foo", ""},
+		{"/foo/", ""},
+		{"/foo/bar?a=b", "bar"},
+		{"/foo/bar#anchor-here", "bar"},
+		{"/foo/bar?a=/blah#anchor-here", "bar"},
+		{"/foo/bar/baz?a=/blah#anchor-here", "bar"},
+	} {
+		c := Config{Path: "/foo/"}
+		actual := c.ParseFunction(test.path)
+		if actual != test.expected {
+			t.Errorf("\nTest %d\nExpected: %s\n  Actual: %s", i, test.expected, actual)
+		}
+	}
+}
+
 func TestMaybeToInvokeInput(t *testing.T) {
 	r1 := mustNewRequest("PUT", "/api/user", bytes.NewBufferString("hello world"))
 	r2 := mustNewRequest("PUT", "/api/user", bytes.NewBufferString("hello world"))
 
 	// expect a non-nil input
 	c := Config{
+		Path:        "/api/",
 		NamePrepend: "before-",
 		NameAppend:  "-after",
 		Qualifier:   "prod",

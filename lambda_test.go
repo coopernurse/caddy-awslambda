@@ -62,25 +62,6 @@ func TestInvokeInvalidFunc(t *testing.T) {
 	}
 }
 
-func TestParseFunction(t *testing.T) {
-	for i, test := range []struct {
-		path     string
-		expected string
-	}{
-		{"/foo/bar", "bar"},
-		{"/foo/bar/baz", "baz"},
-		{"blah", "blah"},
-		{"/foo/bar?a=b", "bar"},
-		{"/foo/bar#anchor-here", "bar"},
-		{"/foo/bar?a=/blah#anchor-here", "bar"},
-	} {
-		actual := ParseFunction(test.path)
-		if actual != test.expected {
-			t.Errorf("\nTest %d\nExpected: %s\n  Actual: %s", i, test.expected, actual)
-		}
-	}
-}
-
 ////////////////////////////////////////
 
 func marshalJSON(i interface{}) []byte {
