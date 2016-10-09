@@ -85,6 +85,8 @@ type Reply struct {
 	Meta *ReplyMeta `json:"meta"`
 	// Response body
 	Body string `json:"body"`
+	// Encoding of Body - Valid values: "", "base64"
+	BodyEncoding string `json:"bodyEncoding"`
 }
 
 // ReplyMeta encapsulates HTTP response metadata that the lambda function wishes

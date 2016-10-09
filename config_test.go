@@ -118,18 +118,22 @@ func TestParseConfigs(t *testing.T) {
     exclude    *blah*
     name_prepend   apex-foo_
     name_append    _suffix_here
+    single             my-single-func
+    strip_path_prefix  on
 }`,
 			[]*Config{
 				&Config{
-					Path:        "/blah/",
-					AwsAccess:   "my-access",
-					AwsSecret:   "my-secret",
-					AwsRegion:   "us-west-1",
-					Qualifier:   "prod",
-					Include:     []string{"foo*", "some-other"},
-					Exclude:     []string{"*blah*"},
-					NamePrepend: "apex-foo_",
-					NameAppend:  "_suffix_here",
+					Path:            "/blah/",
+					AwsAccess:       "my-access",
+					AwsSecret:       "my-secret",
+					AwsRegion:       "us-west-1",
+					Qualifier:       "prod",
+					Include:         []string{"foo*", "some-other"},
+					Exclude:         []string{"*blah*"},
+					NamePrepend:     "apex-foo_",
+					NameAppend:      "_suffix_here",
+					Single:          "my-single-func",
+					StripPathPrefix: true,
 				},
 			},
 		},
@@ -228,6 +232,56 @@ func TestMaybeToInvokeInput(t *testing.T) {
 	input, err = c.MaybeToInvokeInput(r1)
 	if err != nil || input != nil {
 		t.Fatalf("MaybeToInvokeInput returned err or non-nil input: input=%v  err=%v", input, err)
+	}
+}
+
+func TestSingleFunction(t *testing.T) {
+	r1 := mustNewRequest("PUT", "/api/user", bytes.NewBufferString("hello world"))
+
+	// expect a non-nil input
+	c := Config{
+		Single: "single-func",
+
+		// ignored:
+		Exclude: []string{"single"},
+		Include: []string{"foo"},
+	}
+	input, err := c.MaybeToInvokeInput(r1)
+	if err != nil {
+		t.Fatalf("MaybeToInvokeInput returned err: %v", err)
+	}
+	if c.Single != *input.FunctionName {
+		t.Errorf("FunctionName wrong: %s != %s", c.Single, input.FunctionName)
+	}
+}
+
+func TestStripPathPrefix(t *testing.T) {
+	c := Config{
+		Path:   "/api/",
+		Single: "single-func",
+	}
+
+	for i, test := range []struct {
+		reqPath  string
+		funcName string
+		isSingle bool
+		expected string
+	}{
+		{"/api/foo", "foo", false, "/"},
+		{"/api/blahstuff/other/things", "no-match", false, "/api/blahstuff/other/things"},
+		{"/api/foo", "foo", true, "/foo"},
+		{"/other/foo", "foo", false, "/other/foo"},
+		{"/other/foo", "foo", true, "/other/foo"},
+	} {
+		c.Single = ""
+		if test.isSingle {
+			c.Single = "single-func"
+		}
+
+		actual := c.stripPathPrefix(test.reqPath, test.funcName)
+		if actual != test.expected {
+			t.Errorf("Test %d failed:\nExpected: %s\n  Actual: %s", i, test.expected, actual)
+		}
 	}
 }
 

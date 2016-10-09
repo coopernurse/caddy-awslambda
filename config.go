@@ -38,6 +38,23 @@ type Config struct {
 	NamePrepend string
 	NameAppend  string
 
+	// If set, all requests to this path will invoke this function.
+	// The function name will not be parsed from the URL.
+	// This is useful for cases where you are multiplexing requests inside
+	// the lambda function itself.
+	//
+	// Note: If set, Include and Exclude will be ignored.
+	//
+	Single string
+
+	// If true, the Path field and function name will be removed from the
+	// RequestMeta.Path sent to the lambda function.  If Single is set,
+	// only the Path will be removed.
+	//
+	// For example, given: awslambda /api/ and a request to: /api/hello/foo
+	// the RequestMeta.Path would be /foo
+	StripPathPrefix bool
+
 	invoker Invoker
 }
 
@@ -118,14 +135,20 @@ func (c *Config) ParseFunction(path string) string {
 // http.Request, and the NameAppend and NamePrepend rules applied (if any).
 func (c *Config) MaybeToInvokeInput(r *http.Request) (*lambda.InvokeInput, error) {
 	// Verify that parsed function name is allowed based on Config rules
-	funcName := c.ParseFunction(r.URL.Path)
-	if !c.AcceptsFunction(funcName) {
-		return nil, nil
+	funcName := c.Single
+	if funcName == "" {
+		funcName = c.ParseFunction(r.URL.Path)
+		if !c.AcceptsFunction(funcName) {
+			return nil, nil
+		}
 	}
 
 	req, err := NewRequest(r)
 	if err != nil {
 		return nil, err
+	}
+	if c.StripPathPrefix && req.Meta != nil {
+		req.Meta.Path = c.stripPathPrefix(req.Meta.Path, funcName)
 	}
 
 	payload, err := json.Marshal(req)
@@ -159,6 +182,24 @@ func (c *Config) initLambdaClient() error {
 	return nil
 }
 
+func (c *Config) stripPathPrefix(reqPath, funcName string) string {
+	prefix := c.Path
+	if c.Single == "" {
+		if !strings.HasSuffix(prefix, "/") {
+			prefix += "/"
+		}
+		prefix += funcName
+	}
+
+	if strings.HasPrefix(reqPath, prefix) {
+		reqPath = reqPath[len(prefix):]
+		if !strings.HasPrefix(reqPath, "/") {
+			reqPath = "/" + reqPath
+		}
+	}
+	return reqPath
+}
+
 // ParseConfigs parses a Caddy awslambda config block into a Config struct.
 func ParseConfigs(c *caddy.Controller) ([]*Config, error) {
 	var configs []*Config
@@ -189,6 +230,10 @@ func ParseConfigs(c *caddy.Controller) ([]*Config, error) {
 			conf.NamePrepend = val
 		case "name_append":
 			conf.NameAppend = val
+		case "single":
+			conf.Single = val
+		case "strip_path_prefix":
+			conf.StripPathPrefix = toBool(val)
 		case "include":
 			conf.Include = append(conf.Include, val)
 			conf.Include = append(conf.Include, c.RemainingArgs()...)
@@ -208,6 +253,16 @@ func ParseConfigs(c *caddy.Controller) ([]*Config, error) {
 	}
 
 	return configs, nil
+}
+
+// toBool treats any of the following as true: 1, yes, y, on, true
+// otherwise returns false
+func toBool(s string) bool {
+	s = strings.ToLower(s)
+	if s == "1" || s == "y" || s == "yes" || s == "true" || s == "on" {
+		return true
+	}
+	return false
 }
 
 // matchGlob returns true if string s matches the rule.

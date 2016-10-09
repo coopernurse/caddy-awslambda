@@ -1,6 +1,7 @@
 package awslambda
 
 import (
+	"encoding/base64"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/service/lambda"
@@ -61,8 +62,19 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) 
 
 	w.WriteHeader(reply.Meta.Status)
 
+	// Optionally decode the response body
+	var bodyBytes []byte
+	if reply.BodyEncoding == "base64" && reply.Body != "" {
+		bodyBytes, err = base64.StdEncoding.DecodeString(reply.Body)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		bodyBytes = []byte(reply.Body)
+	}
+
 	// Write the response body
-	_, err = w.Write([]byte(reply.Body))
+	_, err = w.Write(bodyBytes)
 	if err != nil {
 		return 0, err
 	}
