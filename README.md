@@ -48,7 +48,7 @@ awslambda <path-prefix> {
     name_append        string to append to function name
     single             name of a single lambda function to invoke
     strip_path_prefix  If true, path and function name are stripped from the path
-}</code>
+}
 ```
 
 *   **aws_access** is the AWS Access Key to use when invoking Lambda functions. If omitted, the AWS_ACCESS_KEY_ID env var is used.
