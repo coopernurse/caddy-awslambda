@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/mholt/caddy"
+	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
 
 // Config specifies configuration for a single awslambda block
@@ -54,6 +55,9 @@ type Config struct {
 	// For example, given: awslambda /api/ and a request to: /api/hello/foo
 	// the RequestMeta.Path would be /foo
 	StripPathPrefix bool
+
+	// headers to set in the upstream "headers" array - caddy placeholders work here
+	UpstreamHeaders map[string][]string
 
 	invoker Invoker
 }
@@ -151,6 +155,20 @@ func (c *Config) MaybeToInvokeInput(r *http.Request) (*lambda.InvokeInput, error
 		req.Meta.Path = c.stripPathPrefix(req.Meta.Path, funcName)
 	}
 
+	// inject upstream headers defined with the header_upstream directive into req.Meta.Headers
+	// uses caddy's integrated replacer for placeholder replacement (https://caddyserver.com/docs/placeholders)
+	for k, v := range c.UpstreamHeaders {
+		replInt := r.Context().Value(httpserver.ReplacerCtxKey)
+		replacer := replInt.(httpserver.Replacer)
+
+		newValue := make([]string, len(v))
+		for i, v := range v {
+			newValue[i] = replacer.Replace(v)
+		}
+
+		req.Meta.Headers[strings.ToLower(k)] = newValue
+	}
+
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -240,6 +258,12 @@ func ParseConfigs(c *caddy.Controller) ([]*Config, error) {
 		case "exclude":
 			conf.Exclude = append(conf.Exclude, val)
 			conf.Exclude = append(conf.Exclude, c.RemainingArgs()...)
+		case "header_upstream":
+			if conf.UpstreamHeaders == nil {
+				conf.UpstreamHeaders = make(map[string][]string)
+			}
+			value := strings.Join(c.RemainingArgs(), " ")
+			conf.UpstreamHeaders[val] = []string{value}
 		default:
 			last = val
 		}
