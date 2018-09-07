@@ -14,6 +14,9 @@ Given that AWS Lambda has no notion of request and response headers, this plugin
 JSON envelope format that encodes HTTP requests in a standard way, and expects the JSON returned from
 the Lambda functions to conform to the response JSON envelope format.
 
+*Contributors*: If you wish to contribute to this plugin, scroll to the bottom of this file
+to the "Building" section for notes on how to build caddy locally with this plugin enabled.
+
 ## Examples
 
 (1) Proxy all requests starting with /lambda/ to AWS Lambda, using env vars for AWS access keys and region:
@@ -267,4 +270,35 @@ var reply = {
 all Lambda responses must be JSON we need a way to detect the presence of the envelope. Without
 this field, the raw reply JSON will be sent back to the client unmodified.
     
+## Building
 
+If you want to modify the plugin and test your changes locally, follow these steps to
+recompile caddy with the plugin installed:
+
+```bash
+go get github.com/mholt/caddy/caddy
+cd $GOPATH/src/github.com/mholt/caddy/caddy
+```
+
+Edit `caddymain/run.go` and add this to the import section:
+
+```
+_ "github.com/coopernurse/caddy-awslambda"
+```
+
+```bash
+cd $GOPATH/src/github.com/mholt/caddy/caddy
+go run build.go
+```
+
+That will create a `caddy` binary in the current directory linking in the
+awslambda plugin with whatever local changes you've made.
+
+Verify that the plugin is installed:
+
+```bash
+./caddy -plugins | grep aws
+
+# you should see:
+  http.awslambda
+```
