@@ -251,7 +251,7 @@ func TestSingleFunction(t *testing.T) {
 		t.Fatalf("MaybeToInvokeInput returned err: %v", err)
 	}
 	if c.Single != *input.FunctionName {
-		t.Errorf("FunctionName wrong: %s != %s", c.Single, input.FunctionName)
+		t.Errorf("FunctionName wrong: %s != %s", c.Single, *input.FunctionName)
 	}
 }
 
