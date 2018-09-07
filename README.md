@@ -286,6 +286,8 @@ Edit `caddymain/run.go` and add this to the import section:
 _ "github.com/coopernurse/caddy-awslambda"
 ```
 
+Then run the `build.go` step:
+
 ```bash
 cd $GOPATH/src/github.com/mholt/caddy/caddy
 go run build.go
@@ -302,3 +304,6 @@ Verify that the plugin is installed:
 # you should see:
   http.awslambda
 ```
+
+These instructions are based on these notes:
+https://github.com/mholt/caddy/wiki/Plugging-in-Plugins-Yourself
