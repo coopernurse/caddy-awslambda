@@ -2,6 +2,7 @@ package awslambda
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"reflect"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/mholt/caddy"
+	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
 
 func TestAcceptsFunction(t *testing.T) {
@@ -120,6 +122,7 @@ func TestParseConfigs(t *testing.T) {
     name_append    _suffix_here
     single             my-single-func
     strip_path_prefix  on
+    header_upstream    x-real-ip {remote}
 }`,
 			[]*Config{
 				&Config{
@@ -134,6 +137,9 @@ func TestParseConfigs(t *testing.T) {
 					NameAppend:      "_suffix_here",
 					Single:          "my-single-func",
 					StripPathPrefix: true,
+					UpstreamHeaders: map[string][]string{
+						"x-real-ip": []string{"{remote}"},
+					},
 				},
 			},
 		},
@@ -207,6 +213,10 @@ func TestMaybeToInvokeInput(t *testing.T) {
 		NamePrepend: "before-",
 		NameAppend:  "-after",
 		Qualifier:   "prod",
+		UpstreamHeaders: map[string][]string{
+			"x-real-proto":  []string{"{proto}"},
+			"x-real-method": []string{"{method}"},
+		},
 	}
 	input, err := c.MaybeToInvokeInput(r1)
 	if err != nil {
@@ -220,6 +230,8 @@ func TestMaybeToInvokeInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRequest returned err: %v", err)
 	}
+	req.Meta.Headers["x-real-proto"] = []string{"HTTP/1.1"}
+	req.Meta.Headers["x-real-method"] = []string{"PUT"}
 	expected := lambda.InvokeInput{
 		FunctionName: &funcName,
 		Qualifier:    &c.Qualifier,
@@ -290,5 +302,8 @@ func mustNewRequest(method, path string, body io.Reader) *http.Request {
 	if err != nil {
 		panic(err)
 	}
+	replacer := httpserver.NewReplacer(req, nil, "")
+	newContext := context.WithValue(req.Context(), httpserver.ReplacerCtxKey, replacer)
+	req = req.WithContext(newContext)
 	return req
 }
