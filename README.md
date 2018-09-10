@@ -65,8 +65,9 @@ awslambda <path-prefix> {
 *   **name_append** is an optional string to append to the function name parsed from the URL before invoking the Lambda.
 *   **single** is an optional function name. If set, function name is not parsed from the URI path.
 *   **strip_path_prefix** If 'true', path and function name is stripped from the path sent as request metadata to the Lambda function. (default=false)
-*   **header_upstream** Inject "header" key-value pairs into the upstream request json. Supports usage of caddyfile placeholders. Can be used multiple times. Comes handy with frameworks like express. Example:
+*   **header_upstream** Inject "header" key-value pairs into the upstream request json. Supports usage of [caddyfile placeholders](https://caddyserver.com/docs/placeholders). Can be used multiple times. Comes handy with frameworks like express. Example:
    ```
+   header_upstream X-API-Secret super1337secretapikey
    header_upstream X-Forwarded-For {remote}
    header_upstream X-Forwarded-Host {hostonly}
    header_upstream X-Forwarded-Proto {scheme}
