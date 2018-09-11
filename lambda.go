@@ -75,7 +75,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) 
 
 	// Write the response body
 	_, err = w.Write(bodyBytes)
-	if err != nil {
+	if err != nil || reply.Meta.Status >= 400 {
 		return 0, err
 	}
 
