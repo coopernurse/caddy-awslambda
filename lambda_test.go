@@ -19,10 +19,7 @@ func TestInvokeOK(t *testing.T) {
 		},
 	}
 	h := initHandler(invoker)
-	r, err := http.NewRequest("POST", "/lambda-test/foo", bytes.NewBufferString("hi"))
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+	r := mustNewRequest("POST", "/lambda-test/foo", bytes.NewBufferString("hi"))
 	w := httptest.NewRecorder()
 
 	status, err := h.ServeHTTP(w, r)
