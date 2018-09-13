@@ -155,16 +155,18 @@ func (c *Config) MaybeToInvokeInput(r *http.Request) (*lambda.InvokeInput, error
 		req.Meta.Path = c.stripPathPrefix(req.Meta.Path, funcName)
 	}
 
-	// inject upstream headers defined with the header_upstream directive into req.Meta.Headers
-	// uses caddy's integrated replacer for placeholder replacement (https://caddyserver.com/docs/placeholders)
-	replInt := r.Context().Value(httpserver.ReplacerCtxKey)
-	replacer := replInt.(httpserver.Replacer)
-	for k, v := range c.UpstreamHeaders {
-		newValue := make([]string, len(v))
-		for i, v := range v {
-			newValue[i] = replacer.Replace(v)
+	if len(c.UpstreamHeaders) > 0 {
+		// inject upstream headers defined with the header_upstream directive into req.Meta.Headers
+		// uses caddy's integrated replacer for placeholder replacement (https://caddyserver.com/docs/placeholders)
+		replInt := r.Context().Value(httpserver.ReplacerCtxKey)
+		replacer := replInt.(httpserver.Replacer)
+		for k, v := range c.UpstreamHeaders {
+			newValue := make([]string, len(v))
+			for i, v := range v {
+				newValue[i] = replacer.Replace(v)
+			}
+			req.Meta.Headers[strings.ToLower(k)] = newValue
 		}
-		req.Meta.Headers[strings.ToLower(k)] = newValue
 	}
 
 	payload, err := json.Marshal(req)
