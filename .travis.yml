@@ -1,12 +1,11 @@
 language: go
 go:
-- "1.10"
+- "1.11"
 - tip
 
 before_script:
 - go get golang.org/x/tools/cmd/cover
 - go get github.com/mattn/goveralls
 - go get -u github.com/aws/aws-sdk-go
-- go get -u github.com/mholt/caddy
 
 script: ./test_all.sh
