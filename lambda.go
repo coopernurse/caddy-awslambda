@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/service/lambda"
-	"github.com/mholt/caddy/caddyhttp/httpserver"
+	"github.com/caddyserver/caddy/caddyhttp/httpserver"
 )
 
 // Invoker calls a single AWS Lambda function - can be mocked for tests

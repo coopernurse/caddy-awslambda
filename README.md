@@ -283,27 +283,30 @@ this field, the raw reply JSON will be sent back to the client unmodified.
 If you want to modify the plugin and test your changes locally, follow these steps to
 recompile caddy with the plugin installed:
 
-```bash
-go get github.com/mholt/caddy/caddy
-go get github.com/caddyserver/builds
-cd $GOPATH/src/github.com/mholt/caddy/caddy
+These instructions are mostly taken from Caddy's README.  Note that this process now uses
+the Go Module system to download dependencies.
+
+1. Set the transitional environment variable for Go modules: `export GO111MODULE=on`
+2. Create a new folder anywhere and within create a Go file  (extension `.go`) with the contents below, adjusting to import the plugins you want to include:
+```go
+package main
+
+import (
+	"github.com/caddyserver/caddy/caddy/caddymain"
+	
+	// Register this plugin - you may add other packages here, one per line
+    _ "github.com/coopernurse/caddy-awslambda"
+)
+
+func main() {
+	// optional: disable telemetry
+	// caddymain.EnableTelemetry = false
+	caddymain.Run()
+}
 ```
-
-Edit `caddymain/run.go` and add this to the import section:
-
-```
-_ "github.com/coopernurse/caddy-awslambda"
-```
-
-Then run the `build.go` step:
-
-```bash
-cd $GOPATH/src/github.com/mholt/caddy/caddy
-go run build.go
-```
-
-That will create a `caddy` binary in the current directory linking in the
-awslambda plugin with whatever local changes you've made.
+3. `go mod init caddy`
+4. Run `go get github.com/caddyserver/caddy`
+5. `go install` will then create your binary at `$GOPATH/bin`, or `go build` will put it in the current directory.
 
 Verify that the plugin is installed:
 
@@ -315,4 +318,4 @@ Verify that the plugin is installed:
 ```
 
 These instructions are based on these notes:
-https://github.com/mholt/caddy/wiki/Plugging-in-Plugins-Yourself
+https://github.com/caddyserver/caddy/wiki/Plugging-in-Plugins-Yourself
