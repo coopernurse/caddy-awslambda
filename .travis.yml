@@ -1,11 +1,13 @@
 language: go
+env:
+  - GO111MODULE=on
 go:
-- "1.11"
-- tip
+  - "1.11"
+  - tip
 
 before_script:
-- go get golang.org/x/tools/cmd/cover
-- go get github.com/mattn/goveralls
-- go get -u github.com/aws/aws-sdk-go
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+  - go get -u github.com/aws/aws-sdk-go
 
 script: ./test_all.sh
