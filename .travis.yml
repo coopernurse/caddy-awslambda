@@ -5,10 +5,4 @@ go:
   - "1.12"
   - tip
 
-before_script:
-  - go mod init
-  - go get golang.org/x/tools/cmd/cover
-  - go get github.com/mattn/goveralls
-  - go get -u github.com/aws/aws-sdk-go
-
 script: ./test_all.sh
