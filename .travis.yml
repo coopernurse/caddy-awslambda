@@ -5,4 +5,7 @@ go:
   - "1.12"
   - tip
 
+before_script:
+  - go get github.com/mattn/goveralls
+
 script: ./test_all.sh
